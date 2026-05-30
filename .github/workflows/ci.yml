@@ -12,15 +12,19 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    env:
+      # tachyon-sys vendor code uses C++23 features (__has_feature, std::unexpected)
+      # that require g++-14 or newer. The default g++ on ubuntu-latest is g++-13
+      # which fails to compile them.
+      CXX: g++-14
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
-        uses: actions/setup-rust@v2
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          override: true
-          toolchain: stable
+          components: rustfmt, clippy
 
       - name: Install Rust workspace dependencies
         run: cargo fetch

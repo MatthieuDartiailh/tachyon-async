@@ -54,9 +54,16 @@ impl From<tokio::task::JoinError> for AsyncBusError {
 ///
 /// The current upstream receive API is blocking, so `recv` uses
 /// `tokio::task::spawn_blocking` and returns an owned message copy.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AsyncBus {
     inner: Arc<Mutex<Bus>>,
+}
+
+impl std::fmt::Debug for AsyncBus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Bus does not implement Debug upstream; show only the type name.
+        f.debug_struct("AsyncBus").finish_non_exhaustive()
+    }
 }
 
 impl AsyncBus {
@@ -128,16 +135,26 @@ impl AsyncBus {
     /// clones before calling `into_receiver`.
     pub fn into_receiver(self, spin_threshold: u32, channel_capacity: usize) -> BusReceiver {
         let bus = Arc::try_unwrap(self.inner)
-            .expect(
-                "into_receiver requires exclusive ownership; \
-                 all AsyncBus clones must be dropped first",
-            )
+            .unwrap_or_else(|_| {
+                panic!(
+                    "into_receiver requires exclusive ownership; \
+                     all AsyncBus clones must be dropped first"
+                )
+            })
             .into_inner()
             .expect("AsyncBus mutex was poisoned");
 
         let (tx, rx) = tokio::sync::mpsc::channel(channel_capacity);
 
-        let driver = tokio::task::spawn_blocking(move || loop {
+        // Use a plain OS thread (not tokio::task::spawn_blocking) so that the
+        // Tokio runtime can shut down cleanly even if the driver is still
+        // blocked inside `acquire_rx`. A `spawn_blocking` task would prevent
+        // the blocking-pool from draining during runtime shutdown.
+        //
+        // `blocking_send` works from a non-Tokio thread: when called outside
+        // a runtime context it uses `CachedParkThread` for parking, which
+        // requires no Tokio handle.
+        let driver = std::thread::spawn(move || loop {
             match bus.acquire_rx(spin_threshold) {
                 Ok(guard) => {
                     let msg = OwnedMessage {

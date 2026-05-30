@@ -1,5 +1,4 @@
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 
 use crate::bus::{AsyncBusError, OwnedMessage};
 
@@ -82,16 +81,21 @@ impl std::error::Error for TryRecvBufferedError {}
 /// ## Cleanup
 ///
 /// When this value is dropped, the internal channel closes. The driver thread exits
-/// on its next iteration when it can no longer send into the closed channel.
+/// on its next iteration when it detects the channel is closed (i.e., after it
+/// successfully receives one more message from upstream and tries to send it).
+/// Because the upstream `acquire_rx` API has no cancellation mechanism, the driver
+/// may remain blocked in `acquire_rx` until the next message arrives; it is a plain
+/// OS thread and does not prevent the Tokio runtime from shutting down.
 pub struct BusReceiver {
     rx: mpsc::Receiver<Result<OwnedMessage, AsyncBusError>>,
-    _driver: JoinHandle<()>,
+    // Plain OS thread; dropped = detached. Does not block Tokio runtime shutdown.
+    _driver: std::thread::JoinHandle<()>,
 }
 
 impl BusReceiver {
     pub(crate) fn new(
         rx: mpsc::Receiver<Result<OwnedMessage, AsyncBusError>>,
-        driver: JoinHandle<()>,
+        driver: std::thread::JoinHandle<()>,
     ) -> Self {
         Self {
             rx,
