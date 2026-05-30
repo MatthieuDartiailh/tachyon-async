@@ -148,7 +148,11 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     const CONNECT_RETRY_ATTEMPTS: usize = 200;
-    const CONNECT_RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(1);
+    const CONNECT_RETRY_DELAY_MS: u64 = 1;
+    const CONNECT_RETRY_DELAY: std::time::Duration =
+        std::time::Duration::from_millis(CONNECT_RETRY_DELAY_MS);
+    const CONNECT_TOTAL_WAIT: std::time::Duration =
+        std::time::Duration::from_millis((CONNECT_RETRY_ATTEMPTS as u64) * CONNECT_RETRY_DELAY_MS);
 
     fn unique_socket(name: &str) -> String {
         let ts = SystemTime::now()
@@ -234,12 +238,9 @@ mod tests {
                     }
                 }
             }
-            let total_wait = CONNECT_RETRY_DELAY
-                .checked_mul(CONNECT_RETRY_ATTEMPTS as u32)
-                .unwrap_or(CONNECT_RETRY_DELAY);
             let bus = bus.unwrap_or_else(|| {
                 panic!(
-                    "client failed to connect to server after {CONNECT_RETRY_ATTEMPTS} attempts over {total_wait:?}; last error: {}",
+                    "client failed to connect to server after {CONNECT_RETRY_ATTEMPTS} attempts over {CONNECT_TOTAL_WAIT:?}; last error: {}",
                     last_connect_error.unwrap_or_else(|| "unknown".to_string())
                 )
             });
