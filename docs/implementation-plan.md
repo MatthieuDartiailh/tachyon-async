@@ -19,13 +19,20 @@ This document outlines the series of planned phases for implementing async Rust 
 - Keep the design constrained to confirmed upstream `tachyon-ipc` APIs and known gaps.
 - Design notes: [`docs/tokio-mvp.md`](./tokio-mvp.md)
 
-## Phase 4: Low-Overhead Mode *(next)*
-- Reduce bridging overhead and mutex contention with a lower-overhead architecture.
-- Expose carefully scoped low-overhead/zero-copy-oriented receive APIs where safe.
-- Align design with any new upstream readiness or nonblocking primitives.
+## Phase 4: Low-Overhead Mode *(implemented)*
+- Introduced `BusReceiver` in `crates/tachyon-tokio`: a dedicated driver-thread receive stream backed by `tokio::sync::mpsc`.
+- Added `AsyncBus::into_receiver(spin_threshold, channel_capacity)` as the recommended low-overhead receive entry-point.
+- Added `BusReceiver::try_recv_buffered()` for synchronous burst-draining after an async wakeup.
+- Confirmed that true zero-copy is not achievable without upstream `try_acquire_rx` or a readiness FD (see Phase 2 gap analysis).
+- Added example `examples/low_overhead_tokio.rs` and design notes in `docs/tokio-low-overhead.md`.
 
 ## Phase 5: smol Runtime Comparison
 - Mirror Tokio APIs for smol.
 - Add comparative results.
+
+## Phase 6: Benchmark Suite
+- Add a focused benchmark harness measuring Phase 3 vs Phase 4 overhead.
+- Measure per-message latency, throughput, and tail latency under burst load.
+- Provide data to guide further upstream API requests.
 
 ---

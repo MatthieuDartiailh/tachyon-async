@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use tachyon_ipc::{Bus, TachyonError};
 
+use crate::receiver::BusReceiver;
+
 /// Owned message representation safe to move across `.await` points.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnedMessage {
@@ -52,9 +54,16 @@ impl From<tokio::task::JoinError> for AsyncBusError {
 ///
 /// The current upstream receive API is blocking, so `recv` uses
 /// `tokio::task::spawn_blocking` and returns an owned message copy.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AsyncBus {
     inner: Arc<Mutex<Bus>>,
+}
+
+impl std::fmt::Debug for AsyncBus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Bus does not implement Debug upstream; show only the type name.
+        f.debug_struct("AsyncBus").finish_non_exhaustive()
+    }
 }
 
 impl AsyncBus {
@@ -104,6 +113,73 @@ impl AsyncBus {
             Ok::<OwnedMessage, AsyncBusError>(message)
         })
         .await?
+    }
+
+    /// Convert this bus into a [`BusReceiver`] backed by a dedicated driver thread.
+    ///
+    /// The driver takes exclusive ownership of the upstream [`Bus`] handle and
+    /// continuously calls `acquire_rx(spin_threshold)` in a loop, forwarding each
+    /// received message as an [`OwnedMessage`] into a buffered channel with capacity
+    /// `channel_capacity`.
+    ///
+    /// This is the **recommended low-overhead receive path** for steady-state
+    /// consumption. It amortizes `spawn_blocking` overhead across many messages,
+    /// unlike [`AsyncBus::recv`] which spawns a fresh blocking task per call.
+    ///
+    /// See [`BusReceiver`] for the full usage pattern and limitations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are outstanding [`AsyncBus`] clones sharing the same inner
+    /// handle (i.e., if the internal `Arc` reference count is not 1). Drop all other
+    /// clones before calling `into_receiver`.
+    pub fn into_receiver(self, spin_threshold: u32, channel_capacity: usize) -> BusReceiver {
+        let bus = Arc::try_unwrap(self.inner)
+            .unwrap_or_else(|_| {
+                panic!(
+                    "into_receiver requires exclusive ownership; \
+                     all AsyncBus clones must be dropped first"
+                )
+            })
+            .into_inner()
+            .expect("AsyncBus mutex was poisoned");
+
+        let (tx, rx) = tokio::sync::mpsc::channel(channel_capacity);
+
+        // Use a plain OS thread (not tokio::task::spawn_blocking) so that the
+        // Tokio runtime can shut down cleanly even if the driver is still
+        // blocked inside `acquire_rx`. A `spawn_blocking` task would prevent
+        // the blocking-pool from draining during runtime shutdown.
+        //
+        // `blocking_send` works from a non-Tokio thread: when called outside
+        // a runtime context it uses `CachedParkThread` for parking, which
+        // requires no Tokio handle.
+        let driver = std::thread::spawn(move || loop {
+            match bus.acquire_rx(spin_threshold) {
+                Ok(guard) => {
+                    let msg = OwnedMessage {
+                        type_id: guard.type_id,
+                        payload: guard.data().to_vec(),
+                    };
+                    // Release the upstream slot promptly before forwarding.
+                    // Forward any commit error to the consumer before exiting.
+                    if let Err(e) = guard.commit() {
+                        let _ = tx.blocking_send(Err(AsyncBusError::from(e)));
+                        break;
+                    }
+                    if tx.blocking_send(Ok(msg)).is_err() {
+                        // Receiver was dropped; exit cleanly.
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let _ = tx.blocking_send(Err(AsyncBusError::from(e)));
+                    break;
+                }
+            }
+        });
+
+        BusReceiver::new(rx, driver)
     }
 }
 
