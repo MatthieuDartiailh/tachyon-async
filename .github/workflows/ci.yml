@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # tachyon-sys vendor code uses C++23 features (__has_feature, std::unexpected)
-      # that require g++-14 or newer. The default g++ on ubuntu-latest is g++-13
-      # which fails to compile them.
+      # tachyon-sys vendor code uses C++23 features (e.g., std::unexpected)
+      # and Clang-style __has_feature() macro usage that require g++-14 or newer.
+      # The default g++ on ubuntu-latest is g++-13 which fails to compile them.
       CXX: g++-14
 
     steps:

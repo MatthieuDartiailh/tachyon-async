@@ -88,7 +88,7 @@ impl std::error::Error for TryRecvBufferedError {}
 /// OS thread and does not prevent the Tokio runtime from shutting down.
 pub struct BusReceiver {
     rx: mpsc::Receiver<Result<OwnedMessage, AsyncBusError>>,
-    // Plain OS thread; dropped = detached. Does not block Tokio runtime shutdown.
+    // Plain OS thread; not joined on drop. Does not block Tokio runtime shutdown.
     _driver: std::thread::JoinHandle<()>,
 }
 
