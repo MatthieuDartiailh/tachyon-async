@@ -10,11 +10,13 @@ This document outlines the series of planned phases for implementing async Rust 
 ## Phase 2: Upstream Gap Analysis
 - Analyze what Tachyon Rust bindings expose.
 - Document any missing APIs needed for async wrappers.
-- Create GitHub issues in upstream repo if decisions/input are required.
+- Track external input needs in this repository issues.
+- Gap analysis output: [`docs/upstream-gap-analysis.md`](./upstream-gap-analysis.md)
 
 ## Phase 3: Tokio MVP
 - Implement a driver-thread readiness model.
 - Support `connect`, `listen`, `recv`, and basic zero-copy patterns.
+- Constrain design to the confirmed upstream surface from Phase 2.
 
 ## Phase 4: Low-Overhead Mode
 - Expose zero-copy APIs focused on low-latency.
