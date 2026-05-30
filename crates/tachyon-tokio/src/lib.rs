@@ -1,5 +1,5 @@
 // Tokio async runtime integrations for Tachyon.
 
-pub mod bus {
-    // AsyncBus implementation placeholder
-}
+mod bus;
+
+pub use crate::bus::{AsyncBus, AsyncBusError, OwnedMessage};

@@ -13,10 +13,12 @@ This project is external to the upstream [Tachyon repo](https://github.com/riyan
 
 ## Project status
 - Phase 1 (repository scaffold): **complete**.
-- Phase 2 (upstream Rust gap analysis): **complete in this PR**.
-- Phase 3 (Tokio MVP adapter): **next**.
+- Phase 2 (upstream Rust gap analysis): **complete**.
+- Phase 3 (Tokio MVP adapter): **implemented**.
+- Phase 4 (low-overhead refinements): **next**.
 
 ## Phase outputs
 - Upstream capability/gap analysis: [`docs/upstream-gap-analysis.md`](docs/upstream-gap-analysis.md)
+- Tokio MVP architecture and limitations: [`docs/tokio-mvp.md`](docs/tokio-mvp.md)
 - External input questions and tracking: [`docs/upstream-inputs.md`](docs/upstream-inputs.md)
 - Overall phased plan: [`docs/implementation-plan.md`](docs/implementation-plan.md)
