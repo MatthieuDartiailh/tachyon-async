@@ -29,14 +29,14 @@ impl std::error::Error for TryRecvBufferedError {}
 ///
 /// # Phase 4 low-overhead receive path
 ///
-/// Created via [`AsyncBus::into_receiver`]. The driver thread takes exclusive
-/// ownership of the upstream [`tachyon_ipc::Bus`] handle and continuously calls
+/// Created via [`crate::AsyncBus::into_receiver`]. The driver thread takes exclusive
+/// ownership of the upstream `tachyon_ipc::Bus` handle and continuously calls
 /// the blocking `acquire_rx(spin_threshold)` in a loop, forwarding each received
 /// message as an [`OwnedMessage`] into an internal `tokio::sync::mpsc` channel.
 ///
 /// ## Why this is lower-overhead than the Phase 3 path
 ///
-/// The Phase 3 [`AsyncBus::recv`] path spawns a new `tokio::task::spawn_blocking`
+/// The Phase 3 [`crate::AsyncBus::recv`] path spawns a new `tokio::task::spawn_blocking`
 /// task for **every** message received. Each spawn carries task-creation and
 /// thread-handoff overhead. `BusReceiver` amortizes that cost across many messages
 /// because the driver thread runs continuously and never re-spawns.
@@ -49,7 +49,7 @@ impl std::error::Error for TryRecvBufferedError {}
 /// therefore still copies the payload out of the upstream guard into an owned
 /// `Vec<u8>` before releasing the upstream slot and forwarding to the channel.
 ///
-/// See [`docs/tokio-low-overhead.md`] for a full explanation of the compromise and
+/// See `docs/tokio-low-overhead.md` for a full explanation of the compromise and
 /// what upstream additions would enable true zero-copy in a future phase.
 ///
 /// ## Recommended usage pattern

@@ -145,7 +145,9 @@ impl AsyncBus {
                         payload: guard.data().to_vec(),
                     };
                     // Release the upstream slot promptly before forwarding.
-                    if guard.commit().is_err() {
+                    // Forward any commit error to the consumer before exiting.
+                    if let Err(e) = guard.commit() {
+                        let _ = tx.blocking_send(Err(AsyncBusError::from(e)));
                         break;
                     }
                     if tx.blocking_send(Ok(msg)).is_err() {
