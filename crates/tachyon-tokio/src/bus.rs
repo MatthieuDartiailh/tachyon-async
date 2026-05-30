@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use tachyon_ipc::{Bus, TachyonError};
 
+use crate::receiver::BusReceiver;
+
 /// Owned message representation safe to move across `.await` points.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnedMessage {
@@ -104,6 +106,61 @@ impl AsyncBus {
             Ok::<OwnedMessage, AsyncBusError>(message)
         })
         .await?
+    }
+
+    /// Convert this bus into a [`BusReceiver`] backed by a dedicated driver thread.
+    ///
+    /// The driver takes exclusive ownership of the upstream [`Bus`] handle and
+    /// continuously calls `acquire_rx(spin_threshold)` in a loop, forwarding each
+    /// received message as an [`OwnedMessage`] into a buffered channel with capacity
+    /// `channel_capacity`.
+    ///
+    /// This is the **recommended low-overhead receive path** for steady-state
+    /// consumption. It amortizes `spawn_blocking` overhead across many messages,
+    /// unlike [`AsyncBus::recv`] which spawns a fresh blocking task per call.
+    ///
+    /// See [`BusReceiver`] for the full usage pattern and limitations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are outstanding [`AsyncBus`] clones sharing the same inner
+    /// handle (i.e., if the internal `Arc` reference count is not 1). Drop all other
+    /// clones before calling `into_receiver`.
+    pub fn into_receiver(self, spin_threshold: u32, channel_capacity: usize) -> BusReceiver {
+        let bus = Arc::try_unwrap(self.inner)
+            .expect(
+                "into_receiver requires exclusive ownership; \
+                 all AsyncBus clones must be dropped first",
+            )
+            .into_inner()
+            .expect("AsyncBus mutex was poisoned");
+
+        let (tx, rx) = tokio::sync::mpsc::channel(channel_capacity);
+
+        let driver = tokio::task::spawn_blocking(move || loop {
+            match bus.acquire_rx(spin_threshold) {
+                Ok(guard) => {
+                    let msg = OwnedMessage {
+                        type_id: guard.type_id,
+                        payload: guard.data().to_vec(),
+                    };
+                    // Release the upstream slot promptly before forwarding.
+                    if guard.commit().is_err() {
+                        break;
+                    }
+                    if tx.blocking_send(Ok(msg)).is_err() {
+                        // Receiver was dropped; exit cleanly.
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let _ = tx.blocking_send(Err(AsyncBusError::from(e)));
+                    break;
+                }
+            }
+        });
+
+        BusReceiver::new(rx, driver)
     }
 }
 
