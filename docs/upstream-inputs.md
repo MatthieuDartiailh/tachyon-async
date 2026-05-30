@@ -52,5 +52,6 @@ Planned issues:
 2. "Need readiness primitive (or pollable handle) in Rust bindings"
 3. "Document zero-copy guard async usage expectations"
 4. "Define benchmark environment assumptions for async comparisons"
+5. "Clarify/document required C++ toolchain baseline for tachyon-sys consumers"
 
 > Note: issue creation from this execution environment was not possible due unavailable GitHub issue-write capability; the above titles are ready to open directly.

@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
 tachyon-async-core = { path = "../tachyon-async-core" }
+tachyon-ipc = "0.5.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
