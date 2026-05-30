@@ -189,6 +189,7 @@ mod tests {
 
         let server_path = socket_path.clone();
         let client_path = socket_path.clone();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
 
         let server = tokio::spawn(async move {
             let bus = AsyncBus::listen(server_path, 1 << 16).await.unwrap();
@@ -199,6 +200,7 @@ mod tests {
                 receiver.try_recv_buffered(),
                 Err(TryRecvBufferedError::Empty)
             );
+            let _ = ready_tx.send(());
 
             // Block until the first message arrives.
             let first = receiver.recv().await.unwrap().unwrap();
@@ -217,6 +219,7 @@ mod tests {
         let client = tokio::spawn(async move {
             tokio::time::sleep(std::time::Duration::from_millis(20)).await;
             let bus = AsyncBus::connect(client_path).await.unwrap();
+            ready_rx.await.unwrap();
             bus.send(b"first", 1).unwrap();
         });
 
