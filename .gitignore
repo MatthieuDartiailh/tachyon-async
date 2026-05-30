@@ -1,0 +1,8 @@
+target/
+**/*.rs.bk
+**/*.rs.swp
+*.log
+/benchmark/results/
+/.idea
+/.vscode
+/target-release/

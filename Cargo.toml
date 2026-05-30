@@ -1,0 +1,12 @@
+[workspace]
+
+members = [
+    "crates/tachyon-async-core",
+    "crates/tachyon-tokio",
+    "crates/tachyon-smol",
+    "crates/tachyon-bench-types"
+]
+
+[profile.release]
+# Ensure good performance optimizations
+debug = false
