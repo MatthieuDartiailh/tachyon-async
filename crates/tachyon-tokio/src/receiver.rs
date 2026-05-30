@@ -147,6 +147,9 @@ mod tests {
     use crate::bus::AsyncBus;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    const CONNECT_RETRY_ATTEMPTS: usize = 200;
+    const CONNECT_RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(1);
+
     fn unique_socket(name: &str) -> String {
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -217,8 +220,29 @@ mod tests {
         });
 
         let client = tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-            let bus = AsyncBus::connect(client_path).await.unwrap();
+            let mut bus = None;
+            let mut last_connect_error = None;
+            for _ in 0..CONNECT_RETRY_ATTEMPTS {
+                match AsyncBus::connect(client_path.clone()).await {
+                    Ok(connected) => {
+                        bus = Some(connected);
+                        break;
+                    }
+                    Err(err) => {
+                        last_connect_error = Some(err.to_string());
+                        tokio::time::sleep(CONNECT_RETRY_DELAY).await;
+                    }
+                }
+            }
+            let total_wait = CONNECT_RETRY_DELAY
+                .checked_mul(CONNECT_RETRY_ATTEMPTS as u32)
+                .unwrap_or(CONNECT_RETRY_DELAY);
+            let bus = bus.unwrap_or_else(|| {
+                panic!(
+                    "client failed to connect to server after {CONNECT_RETRY_ATTEMPTS} attempts over {total_wait:?}; last error: {}",
+                    last_connect_error.unwrap_or_else(|| "unknown".to_string())
+                )
+            });
             ready_rx.await.unwrap();
             bus.send(b"first", 1).unwrap();
         });
