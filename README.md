@@ -11,9 +11,12 @@ This project is external to the upstream [Tachyon repo](https://github.com/riyan
 - **benches/**: Benchmarks for measuring async overhead and strategies.
 - **scripts/**: Helper scripts for running benchmarks consistently.
 
-## Phases
-1. Repository scaffold and planning (current phase).
-2. Upstream gap analysis to identify missing primitives or hooks.
-3. Prototyping async `Tokio` interfaces.
-4. Adding smol equivalence and benchmarks.
-5. Producing results for upstream discussions.
+## Project status
+- Phase 1 (repository scaffold): **complete**.
+- Phase 2 (upstream Rust gap analysis): **complete in this PR**.
+- Phase 3 (Tokio MVP adapter): **next**.
+
+## Phase outputs
+- Upstream capability/gap analysis: [`docs/upstream-gap-analysis.md`](docs/upstream-gap-analysis.md)
+- External input questions and tracking: [`docs/upstream-inputs.md`](docs/upstream-inputs.md)
+- Overall phased plan: [`docs/implementation-plan.md`](docs/implementation-plan.md)
