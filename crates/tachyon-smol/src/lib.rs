@@ -1,5 +1,7 @@
 // Smol async runtime integrations for Tachyon.
 
-pub mod bus {
-    // AsyncBus implementation placeholder
-}
+mod bus;
+mod receiver;
+
+pub use crate::bus::{AsyncBus, AsyncBusError, OwnedMessage};
+pub use crate::receiver::{BusReceiver, TryRecvBufferedError};

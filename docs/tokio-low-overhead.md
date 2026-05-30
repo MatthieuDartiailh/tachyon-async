@@ -129,7 +129,7 @@ The improvement is real but **not benchmarked yet** — see the benchmark phase
 4. **`channel_capacity` should be tuned to the expected burst size.**  Too small
    a capacity will cause the driver to block on the channel, back-pressuring
    upstream slot release.
-5. **No `smol` adapter in this phase.** That remains Phase 5 work.
+5. **Runtime specificity.** This document is Tokio-specific; smol now has a matching Phase 5 adapter with small runtime-driven differences documented in `docs/smol-comparison.md`.
 
 ---
 

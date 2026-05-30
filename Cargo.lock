@@ -602,6 +602,7 @@ version = "0.1.0"
 dependencies = [
  "smol",
  "tachyon-async-core",
+ "tachyon-ipc",
 ]
 
 [[package]]

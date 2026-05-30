@@ -26,13 +26,14 @@ This document outlines the series of planned phases for implementing async Rust 
 - Confirmed that true zero-copy is not achievable without upstream `try_acquire_rx` or a readiness FD (see Phase 2 gap analysis).
 - Added example `examples/low_overhead_tokio.rs` and design notes in `docs/tokio-low-overhead.md`.
 
-## Phase 5: smol Runtime Comparison
-- Mirror Tokio APIs for smol.
-- Add comparative results.
+## Phase 5: smol Runtime Comparison *(implemented)*
+- Implemented `crates/tachyon-smol` with `AsyncBus`, `OwnedMessage`, `AsyncBusError`, `BusReceiver`, and `TryRecvBufferedError` mirroring the Tokio crate where practical.
+- Added `AsyncBus::into_receiver(spin_threshold, channel_capacity)` with a dedicated driver-thread receive path and synchronous burst-draining via `try_recv_buffered()`.
+- Added examples `crates/tachyon-smol/examples/basic_smol.rs` and `crates/tachyon-smol/examples/low_overhead_smol.rs`, plus runtime comparison notes in [`docs/smol-comparison.md`](./smol-comparison.md).
 
-## Phase 6: Benchmark Suite
-- Add a focused benchmark harness measuring Phase 3 vs Phase 4 overhead.
-- Measure per-message latency, throughput, and tail latency under burst load.
-- Provide data to guide further upstream API requests.
+## Phase 6: Benchmark Suite *(next)*
+- Add a focused benchmark harness comparing Tokio and smol adapters for both per-call bridge mode and low-overhead receiver mode.
+- Measure per-message latency, throughput, and tail latency under burst load across both runtimes.
+- Provide data to guide further upstream API requests and runtime-specific recommendations.
 
 ---
