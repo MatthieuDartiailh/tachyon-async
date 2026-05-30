@@ -16,11 +16,13 @@ This project is external to the upstream [Tachyon repo](https://github.com/riyan
 - Phase 2 (upstream Rust gap analysis): **complete**.
 - Phase 3 (Tokio MVP adapter): **complete**.
 - Phase 4 (low-overhead Tokio receive path): **complete**.
-- Phase 5 (smol adapter): **next**.
+- Phase 5 (smol adapter comparison implementation): **complete**.
+- Phase 6 (benchmark suite): **next**.
 
 ## Phase outputs
 - Upstream capability/gap analysis: [`docs/upstream-gap-analysis.md`](docs/upstream-gap-analysis.md)
 - Tokio MVP architecture and limitations: [`docs/tokio-mvp.md`](docs/tokio-mvp.md)
 - Tokio low-overhead receive path (Phase 4): [`docs/tokio-low-overhead.md`](docs/tokio-low-overhead.md)
+- Smol comparison implementation (Phase 5): [`docs/smol-comparison.md`](docs/smol-comparison.md)
 - External input questions and tracking: [`docs/upstream-inputs.md`](docs/upstream-inputs.md)
 - Overall phased plan: [`docs/implementation-plan.md`](docs/implementation-plan.md)

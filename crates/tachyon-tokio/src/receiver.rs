@@ -147,6 +147,13 @@ mod tests {
     use crate::bus::AsyncBus;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    const CONNECT_RETRY_ATTEMPTS: usize = 200;
+    const CONNECT_RETRY_DELAY_MS: u64 = 1;
+    const CONNECT_RETRY_DELAY: std::time::Duration =
+        std::time::Duration::from_millis(CONNECT_RETRY_DELAY_MS);
+    const CONNECT_TOTAL_WAIT: std::time::Duration =
+        std::time::Duration::from_millis((CONNECT_RETRY_ATTEMPTS as u64) * CONNECT_RETRY_DELAY_MS);
+
     fn unique_socket(name: &str) -> String {
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -189,6 +196,7 @@ mod tests {
 
         let server_path = socket_path.clone();
         let client_path = socket_path.clone();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
 
         let server = tokio::spawn(async move {
             let bus = AsyncBus::listen(server_path, 1 << 16).await.unwrap();
@@ -199,6 +207,7 @@ mod tests {
                 receiver.try_recv_buffered(),
                 Err(TryRecvBufferedError::Empty)
             );
+            let _ = ready_tx.send(());
 
             // Block until the first message arrives.
             let first = receiver.recv().await.unwrap().unwrap();
@@ -215,8 +224,27 @@ mod tests {
         });
 
         let client = tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-            let bus = AsyncBus::connect(client_path).await.unwrap();
+            let mut bus = None;
+            let mut last_connect_error = None;
+            for _ in 0..CONNECT_RETRY_ATTEMPTS {
+                match AsyncBus::connect(client_path.clone()).await {
+                    Ok(connected) => {
+                        bus = Some(connected);
+                        break;
+                    }
+                    Err(err) => {
+                        last_connect_error = Some(err.to_string());
+                        tokio::time::sleep(CONNECT_RETRY_DELAY).await;
+                    }
+                }
+            }
+            let bus = bus.unwrap_or_else(|| {
+                panic!(
+                    "client failed to connect to server after {CONNECT_RETRY_ATTEMPTS} attempts over {CONNECT_TOTAL_WAIT:?}; last error: {}",
+                    last_connect_error.unwrap_or_else(|| "unknown".to_string())
+                )
+            });
+            ready_rx.await.unwrap();
             bus.send(b"first", 1).unwrap();
         });
 
